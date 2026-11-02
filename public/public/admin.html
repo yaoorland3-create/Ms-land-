@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS Land - Boîte de réception</title>
+    <style>
+        :root {
+            --bg-color: #0b132b;
+            --card-bg: #1c2541;
+            --border-color: #3a506b;
+            --accent-color: #3a86ff;
+            --text-main: #ffffff;
+            --text-sub: #8d99ae;
+        }
+
+        body.theme-cyan {
+            --bg-color: #03071e;
+            --card-bg: #121e31;
+            --border-color: #1f3a5f;
+            --accent-color: #00b4d8;
+        }
+
+        body.theme-midnight {
+            --bg-color: #09090b;
+            --card-bg: #18181b;
+            --border-color: #27272a;
+            --accent-color: #3b82f6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 30px 20px; display: flex; justify-content: center; transition: background-color 0.3s; }
+        .container { width: 100%; max-width: 600px; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .logo-badge { background: var(--accent-color); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; transition: background 0.3s; }
+        h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-main); }
+        
+        .color-picker { display: flex; gap: 6px; }
+        .color-dot { width: 16px; height: 16px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: transform 0.2s; }
+        .color-dot:hover { transform: scale(1.2); }
+        .dot-blue { background: #3a86ff; }
+        .dot-cyan { background: #00b4d8; }
+        .dot-midnight { background: #3b82f6; }
+
+        .messages-list { display: flex; flex-direction: column; gap: 15px; }
+        .message-card { background: var(--card-bg); padding: 20px; border-radius: 14px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.3s; }
+        .message-date { font-size: 0.75rem; color: var(--text-sub); margin-bottom: 8px; }
+        .message-content { font-size: 1rem; color: var(--text-main); line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+        
+        .empty { text-align: center; color: var(--text-sub); margin-top: 50px; font-size: 0.95rem; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <div class="logo-badge">MS Land</div>
+                <h1>Boîte de réception</h1>
+            </div>
+            <div class="color-picker">
+                <div class="color-dot dot-blue" onclick="setTheme('default')" title="Bleu Classique"></div>
+                <div class="color-dot dot-cyan" onclick="setTheme('cyan')" title="Bleu Cyan"></div>
+                <div class="color-dot dot-midnight" onclick="setTheme('midnight')" title="Bleu Nuit Profond"></div>
+            </div>
+        </header>
+
+        <div id="messagesList" class="messages-list">
+            <div class="empty">Chargement de tes messages...</div>
+        </div>
+    </div>
+
+    <script>
+        function setTheme(themeName) {
+            document.body.className = '';
+            if (themeName !== 'default') {
+                document.body.classList.add('theme-' + themeName);
+            }
+            localStorage.setItem('ms_land_theme', themeName);
+        }
+
+        const savedTheme = localStorage.getItem('ms_land_theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+
+        async function fetchMessages() {
+            const listContainer = document.getElementById('messagesList');
+            try {
+                const response = await fetch('/api/messages');
+                const messages = await response.json();
+
+                if (messages.length === 0) {
+                    listContainer.innerHTML = '<div class="empty">Aucun message pour le moment. Partage ton lien ! 🚀</div>';
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                messages.forEach(msg => {
+                    const card = document.createElement('div');
+                    card.className = 'message-card';
+                    
+                    const dateObj = new Date(msg.created_at);
+                    const formattedDate = dateObj.toLocaleDateString('fr-FR', {
+                        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+
+                    card.innerHTML = `
+                        <div class="message-date">Reçu le ${formattedDate}</div>
+                        <div class="message-content">${escapeHtml(msg.content)}</div>
+                    `;
+                    listContainer.appendChild(card);
+                });
+            } catch (err) {
+                listContainer.innerHTML = '<div class="empty" style="color: #f87171;">Erreur lors du chargement des messages.</div>';
+            }
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        fetchMessages();
+        setInterval(fetchMessages, 10000);
+    </script>
+</body>
+</html>
